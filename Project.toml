@@ -1,0 +1,7 @@
+name = "AsyncFinalizers"
+uuid = "0006f4ce-9ebc-4e5a-bc51-1bfc5a659928"
+authors = ["Takafumi Arakaki <aka.tkf@gmail.com> and contributors"]
+version = "0.1.0-DEV"
+
+[compat]
+julia = "1.6"
