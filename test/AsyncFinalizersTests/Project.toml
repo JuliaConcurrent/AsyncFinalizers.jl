@@ -1,0 +1,11 @@
+name = "AsyncFinalizersTests"
+uuid = "ae016fc0-df51-49ef-8961-817465c70c6b"
+authors = ["Takafumi Arakaki <aka.tkf@gmail.com> and contributors"]
+version = "0.1.0-DEV"
+
+[deps]
+AsyncFinalizers = "0006f4ce-9ebc-4e5a-bc51-1bfc5a659928"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+julia = "1.6"
