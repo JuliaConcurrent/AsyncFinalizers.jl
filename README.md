@@ -32,9 +32,9 @@ julia> AsyncFinalizers.register(object) do shim
                # Arbitrary I/O is possible here:
                println("RefInt(", value, ") is finalized")
            end
-       end
+       end;
 
-julia> ref = nothing
+julia> object = nothing
 
 julia> GC.gc(); sleep(0.1)
 RefInt(42) is finalized
