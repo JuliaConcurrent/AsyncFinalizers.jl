@@ -1,5 +1,8 @@
 # AsyncFinalizers
 
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://juliaconcurrent.github.io/AsyncFinalizers.jl/dev)
+[![CI](https://github.com/JuliaConcurrent/AsyncFinalizers.jl/actions/workflows/test.yml/badge.svg)](https://github.com/JuliaConcurrent/AsyncFinalizers.jl/actions/workflows/test.yml)
+
 AsyncFinalizers.jl extends `finalizer` for
 
 * Allowing executing arbitrary code, including I/O, upon garbage collection of a given
@@ -7,6 +10,9 @@ AsyncFinalizers.jl extends `finalizer` for
 
 * Safe and unsafe APIs for avoiding escaping and thus "resurrecting" the object that would
   be collected otherwise.
+
+For more information, see the
+[documentation](https://juliaconcurrent.github.io/AsyncFinalizers.jl/dev).
 
 ## API
 
