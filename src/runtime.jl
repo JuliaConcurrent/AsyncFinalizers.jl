@@ -41,11 +41,27 @@ function AsyncFinalizers.register(finalizer_factory::F, object::T) where {F,T}
             else
                 f
             end
-            put!(QUEUE[], work)
+            queue = QUEUE[]
+            if queue === nothing
+                fallback_finalize(f, T)
+            else
+                put!(queue, work)
+            end
         end
         return
     end
     finalizer(wrapper, object)
+end
+
+function fallback_finalize(f, T)
+    Threads.@spawn begin
+        @warn(
+            "Async finalizer queue not initalized. Calling async finalizer in a new task.",
+            object_type = T,
+            maxlog = 3,
+        )
+        f()
+    end
 end
 
 function run_finalizers(queue; reset_sticky::Bool = false)
@@ -88,6 +104,10 @@ function _run_finalizers(queue; options...)
             "FATAL: finalizer executor shutting down",
             exception = (err, catch_backtrace())
         )
+        if QUEUE[] === queue
+            QUEUE[] = nothing
+        end
+        rethrow()
     end
 end
 

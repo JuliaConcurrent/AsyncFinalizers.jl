@@ -2,6 +2,7 @@ module TestFinalizers
 
 using Test
 using AsyncFinalizers
+using AsyncFinalizers.Internal: fallback_finalize
 
 using ..Utils: check_executor, outlined
 
@@ -54,6 +55,14 @@ function test_lock()
     end
 
     @test a == 1
+end
+
+function test_fallback()
+    counter = Ref(0)
+    f() = counter[] += 1
+    T = Int
+    @test_logs (:warn, r"queue not initalized") wait(fallback_finalize(f, T)::Task)
+    @test counter[] == 1
 end
 
 end  # module
