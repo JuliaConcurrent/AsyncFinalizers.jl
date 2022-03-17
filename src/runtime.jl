@@ -4,8 +4,6 @@ make_workqueue() = SingleReaderDualBag{Any}()
 
 const QUEUE = Ref{Union{typeof(make_workqueue()),Nothing}}()
 
-init_queue() = QUEUE[] = make_workqueue()
-
 """
     AsyncFinalizers.register(finalizer_factory, object)
 
@@ -81,9 +79,9 @@ function run_finalizers(queue; reset_sticky::Bool = false)
     end
 end
 
-function _run_finalizers(; options...)
+function _run_finalizers(queue; options...)
     try
-        run_finalizers(QUEUE[]; options...)
+        run_finalizers(queue; options...)
     catch err
         # TODO: improve error recovery
         @error(
@@ -95,18 +93,14 @@ end
 
 const EXECUTOR = Ref{Union{Task,Nothing}}()
 
-function init_finalizer_executor()
-    EXECUTOR[] = Threads.@spawn _run_finalizers(; reset_sticky = true)
-end
-
 """
     reinit()
 
 (Re-)initialize the task executing the finalizer.
 """
 function reinit()
-    init_queue()
-    init_finalizer_executor()
+    QUEUE[] = queue = make_workqueue()
+    EXECUTOR[] = Threads.@spawn _run_finalizers(queue; reset_sticky = true)
 end
 
 function onexit()
