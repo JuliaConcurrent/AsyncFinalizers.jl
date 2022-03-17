@@ -23,3 +23,8 @@ else
     Historic.@define Debug
     using .Debug: @record
 end
+
+chaos_takemanyto() = nothing
+chaos_run_finalizers() = nothing
+queue_reset_done() = nothing
+queue_fallback_done() = nothing

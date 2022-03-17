@@ -14,13 +14,14 @@ end
 
 return_nothing(_...) = nothing
 
-function collect_garbage(;
+@noinline function collect_garbage(;
     object = () -> Ref(0),
     destruct = return_nothing,
     async_finalizer = return_nothing,
     npolls = 1000_000,
+    check_executor::Bool = true,
 )
-    check_executor()
+    check_executor && (@__MODULE__).check_executor()
     phase1 = Threads.Atomic{Int}(0)
     phase2 = Threads.Atomic{Int}(0)
     outlined() do
