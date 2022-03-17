@@ -7,32 +7,32 @@ const QUEUE = Ref{Union{typeof(make_workqueue()),Nothing}}()
 init_queue() = QUEUE[] = make_workqueue()
 
 """
-    AsyncFinalizers.register(work_factory, object)
+    AsyncFinalizers.register(finalizer_factory, object)
 
 Register asynchronous finalizer for an `object`.
 
-The callback function `work_factory` is a function with the following signature
+The callback function `finalizer_factory` is a function with the following signature
 
-    work_factory(shim) -> async_finalizer
+    finalizer_factory(shim) -> async_finalizer
 
-i.e., `work_factory` is a function that takes `shim` and returns `async_finalizer` where
-`shim` is an object that wraps the `object` and provides the same properties and
+i.e., `finalizer_factory` is a function that takes `shim` and returns `async_finalizer`
+where `shim` is an object that wraps the `object` and provides the same properties and
 `async_finalizer` is `nothing` or a callable that does not take any argument.  The `shim` is
-valid only until `work_factory` returns and not inside `async_finalizer`.  As such,
-`work_factory` must destruct `shim` and only capture the fields required for
+valid only until `finalizer_factory` returns and not inside `async_finalizer`.  As such,
+`finalizer_factory` must destruct `shim` and only capture the fields required for
 `async_finalizer`.
 
 Use [`AsyncFinalizers.unsafe_unwrap`](@ref) to unwrap `shim` and obtain the original
 `object`.  However, it is the user's responsibility to ensure that `async_finalizer` does
 not capture `object`.
 
-The code executed in `work_factory` should be as minimal as possible.  In particular, no I/O
-is allowed inside of `work_factory`.
+The code executed in `finalizer_factory` should be as minimal as possible.  In particular,
+no I/O is allowed inside of `finalizer_factory`.
 """
-function AsyncFinalizers.register(work_factory::F, object::T) where {F,T}
+function AsyncFinalizers.register(finalizer_factory::F, object::T) where {F,T}
     function wrapper(object::T)
         GC.@preserve object begin
-            f = work_factory(WeakRefShim(object))
+            f = finalizer_factory(WeakRefShim(object))
         end
         if f !== nothing
             work = @static if isdefined(Base.Experimental, Symbol("@opaque"))
