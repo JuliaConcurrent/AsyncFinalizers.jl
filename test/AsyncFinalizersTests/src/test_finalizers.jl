@@ -4,31 +4,24 @@ using Test
 using AsyncFinalizers
 using AsyncFinalizers.Internal: fallback_finalize
 
-using ..Utils: check_executor, outlined
+using ..Utils: check_executor, outlined, collect_garbage
 
 function test_simple()
-    check_executor()
-    a = Threads.Atomic{Int}(0)
-    b = Threads.Atomic{Int}(0)
-    outlined() do
-        local r = Ref(0)
-        AsyncFinalizers.register(r) do _
-            a[] = 1
-            function ()
-                b[] = 1
-            end
-        end
+    collect_garbage()
+end
+
+function test_once()
+    ncalls = Threads.Atomic{Int}(0)
+    function async_finalizer(_)
+        Threads.atomic_add!(ncalls, 1)
     end
-    GC.gc()
-
-    @test a[] == 1
-
-    for _ in 1:1000
-        b[] == 1 && break
-        sleep(0.01)
+    @testset "Initial collect_garbage" begin
+        collect_garbage(; async_finalizer = async_finalizer)
     end
-
-    @test b[] == 1
+    @testset for trial in 1:5
+        collect_garbage()
+    end
+    @test ncalls[] == 1
 end
 
 function test_lock()
