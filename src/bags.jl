@@ -72,36 +72,43 @@ const LOCKBITMASK = UInt32(0b10)
 """
     Base.put!(bag::SingleReaderDualBag, x)
 
-Insert `x` to `bag`.  Notify the reader if required.  This method is wait-free and has no
-yield points.
+Insert `x` to `bag`.  Notify the reader if required.  This method is wait-free.  It also has
+no yield points provided that `convert(eltype(bag), x)` does not yield.
 """
 function Base.put!(bag::SingleReaderDualBag{T}, x) where {T}
-    @record(:put_begin, bag, x)
+    @record(:put_begin, bag, x, {yield = false})
     x = convert(T, x)
-    state = bag.states[Threads.threadid()]
 
-    # Acquire a writable buffer
-    writable = atomic_or!(state.writable, LOCKBITMASK)
-    @assert iszero(writable & LOCKBITMASK)
-    @assert writable in (0, 1)
+    @yield_unsafe let state, writable  # [^crucially_yield_unsafe]
+        state = bag.states[Threads.threadid()]
 
-    push!(state.buffers[writable+1], x)
+        # Acquire a writable buffer
+        writable = atomic_or!(state.writable, LOCKBITMASK)
+        @assert iszero(writable & LOCKBITMASK)
+        @assert writable in (0, 1)
 
-    # Release the buffer
-    state.writable[] = writable
+        push!(state.buffers[writable+1], x)
+
+        # Release the buffer
+        state.writable[] = writable
+    end
 
     atomic_fence()  # [^store_buffering_1]
     if bag.readerstate[] == WorkerStates.WAITING
         old = atomic_cas!(bag.readerstate, WorkerStates.WAITING, WorkerStates.NOTIFYING)
         if old == WorkerStates.WAITING
-            @record(:put_schedule, bag, x)
+            @record(:put_schedule, bag, x, {yield = false})
             schedule(bag.waiter::Task)
         end
     end
 
-    @record(:put_end, bag, x)
+    @record(:put_end, bag, x, {yield = false})
     return bag
 end
+# [^crucially_yield_unsafe]: According to the docstring, everything in this function except
+# the `convert` call is yield-unsafe.  However, the explicit `@yield_unsafe` block is "much
+# more" yield-unsafe since the yield must not exist inside this block for correctness even
+# without the specification in the docstring.
 
 function trytakemanyto!(output, bag::SingleReaderDualBag)
     took = false
@@ -158,21 +165,25 @@ function takemanyto!(output, bag::SingleReaderDualBag)
     bag.waiter = current_task()
     while true
         @record(:takemanyto_wait_trying, bag)
-        bag.readerstate[] = WorkerStates.WAITING
-        atomic_fence()  # [^store_buffering_1]
-        result = trytakemanyto!(output, bag)
-        if result.took
-            old = atomic_cas!(bag.readerstate, WorkerStates.WAITING, WorkerStates.ACTIVE)
-            if old == WorkerStates.WAITING
-                @record(:takemanyto_wait_cancelled, bag, success = true)
-                break
+        @yield_unsafe begin
+            bag.readerstate[] = WorkerStates.WAITING
+            atomic_fence()  # [^store_buffering_1]
+            result = trytakemanyto!(output, bag)
+            if result.took
+                old =
+                    atomic_cas!(bag.readerstate, WorkerStates.WAITING, WorkerStates.ACTIVE)
+                if old == WorkerStates.WAITING
+                    # It is yield-safe once the state transition is successfully cancelled.
+                    @record(:takemanyto_wait_cancelled, bag, success = true)
+                    break
+                end
+                @record(:takemanyto_wait_cancelled, bag, success = false, {yield = false})
+                # Otherwise, it means that the reader (this task) has failed to cancel the
+                # state transition.  It has to "receive" the `schedule` by calling `wait()`
+                # and then return immediately. [^failed_to_cancel].
             end
-            @record(:takemanyto_wait_cancelled, bag, success = false)
-            # Otherwise, it means that the reader (this task) has failed to cancel the state
-            # transition.  It has to "receive" the `schedule` by calling `wait()` and then
-            # return immediately. [^failed_to_cancel].
+            @record(:takemanyto_wait_begin, bag, {yield = false})
         end
-        @record(:takemanyto_wait_begin, bag, {yield = false})
         wait()
         @record(:takemanyto_wait_end, bag)
         @assert bag.readerstate[] == WorkerStates.NOTIFYING
