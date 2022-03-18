@@ -30,7 +30,7 @@ function test_lock()
     guard = ReentrantLock()
     outlined() do
         local r = Ref(0)
-        AsyncFinalizers.register(r) do _
+        AsyncFinalizers.onfinalize(r) do _
             function ()
                 lock(guard) do
                     a = 1

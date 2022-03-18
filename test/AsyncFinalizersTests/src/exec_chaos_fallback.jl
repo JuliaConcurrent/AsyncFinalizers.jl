@@ -18,7 +18,7 @@ AsyncFinalizers.Internal.reinit(; nresets = 3)
 
 # Run an async finalizer to hit the fallback code path:
 Utils.outlined() do
-    AsyncFinalizers.register(Ref(0)) do _
+    AsyncFinalizers.onfinalize(Ref(0)) do _
         function () end
     end
     return

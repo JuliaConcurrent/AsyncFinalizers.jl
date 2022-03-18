@@ -1,6 +1,6 @@
 baremodule AsyncFinalizers
 
-function register end
+function onfinalize end
 function unsafe_unwrap end
 
 module Internal

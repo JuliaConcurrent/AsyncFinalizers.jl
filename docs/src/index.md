@@ -2,6 +2,6 @@
 
 ```@docs
 AsyncFinalizers
-AsyncFinalizers.register
+AsyncFinalizers.onfinalize
 AsyncFinalizers.unsafe_unwrap
 ```

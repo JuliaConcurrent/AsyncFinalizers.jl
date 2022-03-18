@@ -26,7 +26,7 @@ return_nothing(_...) = nothing
     phase2 = Threads.Atomic{Int}(0)
     outlined() do
         local obj = object()
-        AsyncFinalizers.register(obj) do obj
+        AsyncFinalizers.onfinalize(obj) do obj
             phase1[] = 1
             local y = destruct(obj)
             function ()
