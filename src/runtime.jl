@@ -92,6 +92,7 @@ function run_finalizers(queue; reset_sticky::Bool = false)
                 current_task().sticky = false
             end
         end
+        empty!(works)
     end
 end
 
