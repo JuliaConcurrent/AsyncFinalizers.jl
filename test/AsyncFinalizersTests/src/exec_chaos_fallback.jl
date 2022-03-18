@@ -3,10 +3,6 @@ using AsyncFinalizers
 
 include("utils.jl")
 
-function AsyncFinalizers.Internal.chaos_takemanyto()
-    error("!!! CHAOS !!!")
-end
-
 function AsyncFinalizers.Internal.chaos_run_finalizers()
     error("!!! CHAOS !!!")
 end
@@ -20,21 +16,15 @@ end
 
 AsyncFinalizers.Internal.reinit(; nresets = 3)
 
-mutable struct Object
-    value::Any
-end
-
-begin
-    Utils.outlined() do
-        object = Object(0)
-        AsyncFinalizers.register(object) do _
-            function () end
-        end
-        return
+# Run an async finalizer to hit the fallback code path:
+Utils.outlined() do
+    AsyncFinalizers.register(Ref(0)) do _
+        function () end
     end
-    GC.gc()
-    take!(FALLBACK_DONE)
+    return
 end
+GC.gc()
+take!(FALLBACK_DONE)
 
 nfinalizers = 5
 FINALIZER_CALLED = zeros(Int, nfinalizers)
