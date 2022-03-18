@@ -64,10 +64,21 @@ function fallback_finalize(f, T)
     end
 end
 
-function run_finalizers(queue; reset_sticky::Bool = false)
+function run_finalizers(queue; reset_sticky::Bool = false, nfailures::Integer = 5)
     works = eltype(queue)[]
+    nf = 0
     while true
-        takemanyto!(works, queue)
+        chaos_run_finalizers()
+        try
+            takemanyto!(works, queue)
+        catch err
+            @error(
+                "FATAL: Unexpected failure in finalizer queue. Some finalizers may be lost.",
+                exception = (err, catch_backtrace()),
+                current_task(),
+            )
+            nf += 1
+        end
         for f in works
             try
                 @static if isdefined(Core, :OpaqueClosure)
@@ -92,23 +103,48 @@ function run_finalizers(queue; reset_sticky::Bool = false)
                 current_task().sticky = false
             end
         end
+        # TODO: check error rate?
+        nf < nfailures || return
         empty!(works)
     end
 end
 
-function _run_finalizers(queue; options...)
+function run_supervisor(queue; nresets::Integer = 100, options...)
+    nr = 0
+    while true
+        try
+            run_finalizers(queue; options...)
+        catch err
+            @error(
+                "FATAL: Error from async finalizer executor",
+                exception = (err, catch_backtrace())
+            )
+        end
+        nr += 1
+        nr < nresets || break
+        if QUEUE[] !== queue
+            @error "FATAL: Detected another exeuctor. Unavble to recover." current_task()
+            return
+        end
+        @error "FATAL: Too many failures. Resetting queue."
+        QUEUE[] = queue = make_workqueue()
+        queue_reset_done()
+    end
+    @error "FATAL: Too many failures in finalizer executor. Switching to fallback."
+    if QUEUE[] === queue
+        QUEUE[] = nothing
+        queue_fallback_done()
+    end
+end
+
+function _run_supervisor(queue; options...)
     try
-        run_finalizers(queue; options...)
+        run_supervisor(queue; options...)
     catch err
-        # TODO: improve error recovery
         @error(
-            "FATAL: finalizer executor shutting down",
+            "FATAL: Unexpected failure in finalizer executor supervisor",
             exception = (err, catch_backtrace())
         )
-        if QUEUE[] === queue
-            QUEUE[] = nothing
-        end
-        rethrow()
     end
 end
 
@@ -119,9 +155,9 @@ const EXECUTOR = Ref{Union{Task,Nothing}}()
 
 (Re-)initialize the task executing the finalizer.
 """
-function reinit()
+function reinit(; options...)
     QUEUE[] = queue = make_workqueue()
-    EXECUTOR[] = Threads.@spawn _run_finalizers(queue; reset_sticky = true)
+    EXECUTOR[] = Threads.@spawn _run_supervisor(queue; reset_sticky = true, options...)
 end
 
 function onexit()

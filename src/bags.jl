@@ -148,6 +148,7 @@ This method is lock-free if `bag` is not empty.
 """
 function takemanyto!(output, bag::SingleReaderDualBag)
     @record(:takemanyto_begin, bag)
+    chaos_takemanyto()
     result = trytakemanyto!(output, bag)
     if result.took
         @record(:takemanyto_end, bag, waited = false)
