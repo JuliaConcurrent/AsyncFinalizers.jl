@@ -2,7 +2,7 @@ module TestChaos
 
 using Test
 
-function run_chaos(filename; addenv = nothing)
+function run_chaos(filename; addenv = ())
     path = joinpath(@__DIR__, filename)
     script = """
     $(Base.load_path_setup_code())
@@ -10,12 +10,10 @@ function run_chaos(filename; addenv = nothing)
     """
     cmd = Base.julia_cmd()
     cmd = `$cmd -e $script`
-    if addenv !== nothing
-        cmd = Base.addenv(cmd, addenv...)
-    end
+    cmd = Base.addenv(cmd, addenv...)
     pipe = Pipe()
-    process =
-        run(pipeline(cmd; stdin = devnull, stdout = pipe, stderr = pipe); wait = false)
+    cmd = pipeline(cmd; stdin = devnull, stdout = pipe, stderr = pipe)
+    process = run(cmd; wait = false)
     close(pipe.in)
     output = read(pipe, String)
     wait(process)
