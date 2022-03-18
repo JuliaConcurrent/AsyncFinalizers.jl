@@ -16,7 +16,7 @@ For more information, see the
 
 ## API
 
-* `AsyncFinalizers.register`: like `finalizer` but allows I/O
+* `AsyncFinalizers.onfinalize`: like `finalizer` but allows I/O
 * `AsyncFinalizers.unsafe_unwrap`: unwrap the `shim` wrapper (see below)
 
 ## Example
@@ -30,7 +30,7 @@ julia> mutable struct RefInt
 
 julia> object = RefInt(42);
 
-julia> AsyncFinalizers.register(object) do shim
+julia> AsyncFinalizers.onfinalize(object) do shim
            # Unpack `shim` of the finalized `object`.  I/O is not allowed here.
            value = shim.value
            # Return a thunk:
@@ -46,6 +46,6 @@ julia> GC.gc(); sleep(0.1)
 RefInt(42) is finalized
 ```
 
-Note that the callback passed to `AsyncFinalizers.register` receives a `shim` wrapper and
+Note that the callback passed to `AsyncFinalizers.onfinalize` receives a `shim` wrapper and
 not the original `object` itself.  To get the original object wrapped in `shim`, use
 `AsyncFinalizers.unsafe_unwrap`.

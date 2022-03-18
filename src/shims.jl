@@ -14,7 +14,7 @@ valueof(shim::WeakRefShim) = getfield(shim, :ref).value
 Unwrap a `shim` and obtain the original object. The user is responsible for ensuring that
 `object` does not escape.
 
-See [`AsyncFinalizers.register`](@ref)
+See [`AsyncFinalizers.onfinalize`](@ref)
 """
 function AsyncFinalizers.unsafe_unwrap(shim::WeakRefShim{T}) where {T}
     obj = valueof(shim)

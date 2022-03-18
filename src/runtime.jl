@@ -5,7 +5,7 @@ make_workqueue() = SingleReaderDualBag{Any}()
 const QUEUE = Ref{Union{typeof(make_workqueue()),Nothing}}()
 
 """
-    AsyncFinalizers.register(finalizer_factory, object)
+    AsyncFinalizers.onfinalize(finalizer_factory, object)
 
 Register asynchronous finalizer for an `object`.
 
@@ -27,7 +27,7 @@ not capture `object`.
 The code executed in `finalizer_factory` should be as minimal as possible.  In particular,
 no I/O is allowed inside of `finalizer_factory`.
 """
-function AsyncFinalizers.register(finalizer_factory::F, object::T) where {F,T}
+function AsyncFinalizers.onfinalize(finalizer_factory::F, object::T) where {F,T}
     function wrapper(object::T)
         GC.@preserve object begin
             f = finalizer_factory(WeakRefShim(object))
