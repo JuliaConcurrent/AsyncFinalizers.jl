@@ -24,6 +24,18 @@ else
     using .Debug: @record
 end
 
+"""
+    @yield_unsafe expression
+
+Document that `expression` must not yield to the Julia scheduler.
+
+This macro is used purely for documentation.  The `expression` is evaluated
+as-is.
+"""
+macro yield_unsafe(ex)
+    esc(ex)
+end
+
 chaos_takemanyto() = nothing
 chaos_run_finalizers() = nothing
 queue_reset_done() = nothing
