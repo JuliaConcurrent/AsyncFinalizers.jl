@@ -18,7 +18,7 @@ return_nothing(_...) = nothing
     object = () -> Ref(0),
     destruct = return_nothing,
     async_finalizer = return_nothing,
-    npolls = 1000_000,
+    npolls = 1_000_000_000,
     check_executor::Bool = true,
 )
     check_executor && (@__MODULE__).check_executor()
