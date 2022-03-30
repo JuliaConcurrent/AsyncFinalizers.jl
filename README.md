@@ -14,6 +14,8 @@ AsyncFinalizers.jl extends `finalizer` for
 For more information, see the
 [documentation](https://juliaconcurrent.github.io/AsyncFinalizers.jl/dev).
 
+For how it works internally, see [Implementation strategy](#implementation-strategy).
+
 ## API
 
 * `AsyncFinalizers.onfinalize`: like `finalizer` but allows I/O
@@ -49,3 +51,13 @@ RefInt(42) is finalized
 Note that the callback passed to `AsyncFinalizers.onfinalize` receives a `shim` wrapper and
 not the original `object` itself.  To get the original object wrapped in `shim`, use
 `AsyncFinalizers.unsafe_unwrap`.
+
+## Implementation strategy
+
+AsyncFinalizers.jl works internally by a background worker task that processes queued async
+finalizers (returned as thunks from the "on-finalize" callback registered using
+`AsyncFinalizers.onfinalize`) and a queue with _lock-free `put!`_ called from the standard
+finalizer (the callback passed to `Base.finalize`).  Since `put!` is [lock-free in the
+"strict" sense](https://en.wikipedia.org/wiki/Non-blocking_algorithm) (modulo GC), `put!`
+called in the standard finalizer can _always_ eventually make forward progress independent
+of the state of the worker task at which it encounters the GC safepoint.
